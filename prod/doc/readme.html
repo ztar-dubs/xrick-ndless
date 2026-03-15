@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>xrick for TI-Nspire CX CAS II</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #333; }
+  h1 { color: #b00; border-bottom: 2px solid #b00; padding-bottom: 8px; }
+  h2 { color: #444; margin-top: 30px; }
+  table { border-collapse: collapse; margin: 10px 0; }
+  th, td { border: 1px solid #ccc; padding: 6px 14px; text-align: left; }
+  th { background: #f0f0f0; }
+  code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; }
+  .tree { font-family: monospace; background: #f9f9f9; padding: 12px 20px; border-left: 3px solid #b00; margin: 10px 0; }
+  a { color: #06c; }
+</style>
+</head>
+<body>
+
+<h1>xrick &mdash; Rick Dangerous for TI-Nspire CX CAS II</h1>
+
+<p>This is a port of <strong>xrick</strong>, an open source clone of the classic game
+<em>Rick Dangerous</em> (Core Design, 1989), for the TI-Nspire CX CAS II calculator
+using the Ndless SDK.</p>
+
+<h2>Installation</h2>
+
+<p>The game is entirely self-contained in a single file. All game data (sprites, tiles,
+maps, images) is embedded in the binary. No additional data files are required.</p>
+
+<h3>Required files</h3>
+
+<div class="tree">
+TI-Nspire storage/<br>
+&nbsp;&nbsp;&nbsp;&nbsp;xrick/<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;xrick.tns
+</div>
+
+<h3>Steps</h3>
+<ol>
+  <li>Make sure <strong>Ndless</strong> is installed on your TI-Nspire CX CAS II.</li>
+  <li>Connect your calculator to your computer via USB.</li>
+  <li>Using TI-Nspire Computer Link (or any file transfer tool), create a folder
+      named <code>xrick</code> on the calculator.</li>
+  <li>Copy <code>xrick.tns</code> into that folder.</li>
+  <li>On the calculator, navigate to the folder and open <code>xrick.tns</code>.</li>
+</ol>
+
+<h2>Controls</h2>
+
+<table>
+  <tr><th>Key</th><th>Action</th></tr>
+  <tr><td><strong>8</strong></td><td>Up / Jump</td></tr>
+  <tr><td><strong>2</strong></td><td>Down / Crouch</td></tr>
+  <tr><td><strong>4</strong></td><td>Left</td></tr>
+  <tr><td><strong>6</strong></td><td>Right</td></tr>
+  <tr><td><strong>Enter / Ctrl / Tab</strong></td><td>Fire / Use weapon</td></tr>
+  <tr><td><strong>P</strong> or <strong>Del</strong></td><td>Pause</td></tr>
+  <tr><td><strong>E</strong></td><td>End game</td></tr>
+  <tr><td><strong>Esc</strong></td><td>Quit</td></tr>
+</table>
+
+<p><strong>Tip:</strong> You can press direction keys simultaneously (e.g. <strong>8</strong> + <strong>6</strong>
+to jump right). The numpad keys are used instead of arrow keys to avoid keyboard ghosting on the Nspire.</p>
+
+<h2>Open source</h2>
+
+<table>
+  <tr><th>Project</th><td><strong>xrick</strong></td></tr>
+  <tr><th>Description</th><td>Open source implementation of Rick Dangerous</td></tr>
+  <tr><th>Original author</th><td>bigorno (bigorno@bigorno.net)</td></tr>
+  <tr><th>Repository used</th><td><a href="https://github.com/zpqrtbnk/xrick">https://github.com/zpqrtbnk/xrick</a></td></tr>
+  <tr><th>Version</th><td>050500 (SDL2 branch)</td></tr>
+  <tr><th>License</th><td>Released in the spirit of the GNU GPL</td></tr>
+  <tr><th>Graphics mode</th><td>GFXST (Atari ST style, 4-bit, 32 colors)</td></tr>
+</table>
+
+<p>The original game <em>Rick Dangerous</em> was developed by Core Design and published
+by MicroProse / Firebird Software in 1989.</p>
+
+<h2>Nspire port details</h2>
+
+<ul>
+  <li><strong>Display:</strong> 320&times;200 game framebuffer centered on the 320&times;240 Nspire screen (16-bit RGB565)</li>
+  <li><strong>Audio:</strong> Disabled (Nspire has no accessible audio hardware)</li>
+  <li><strong>Toolchain:</strong> Ndless SDK (nspire-gcc, ARM926EJ-S cross-compiler)</li>
+  <li><strong>Binary size:</strong> ~489 KB</li>
+  <li><strong>Port source code:</strong> <a href="https://github.com/ztar-dubs/xrick-ndless.git">https://github.com/ztar-dubs/xrick-ndless</a></li>
+</ul>
+
+</body>
+</html>
