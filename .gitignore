@@ -1,0 +1,9 @@
+# Build artifacts
+*.o
+*.elf
+*.zehn
+*.map
+
+# Binary (keep prod/xrick.tns for distribution)
+xrick.tns
+!prod/xrick.tns
