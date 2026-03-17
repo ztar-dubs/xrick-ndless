@@ -133,27 +133,46 @@ void sysvid_shutdown(void)
 
 /*
  * Convert one scanline from 8-bit palettized to RGB565.
- * Unrolled: processes 4 pixels per iteration using U32 writes.
- * ARM926EJ-S handles aligned 32-bit writes in one cycle.
+ *
+ * When dst is 4-byte aligned, uses unrolled U32 writes (2 pixels per write).
+ * Otherwise falls back to safe U16 writes to avoid Data Abort on ARM926EJ-S
+ * which does not support unaligned 32-bit memory access.
  */
 static void convert_scanline(const U8 *src, U16 *dst, U16 width)
 {
-    U16 w4 = width >> 2;  /* number of 4-pixel groups */
-    U16 rem = width & 3;  /* remaining pixels */
-    U32 *dst32 = (U32 *)dst;
+    /* Check if dst is 4-byte aligned for safe U32 writes */
+    if (((U32)dst & 3) == 0) {
+        U16 w4 = width >> 2;
+        U16 rem = width & 3;
+        U32 *dst32 = (U32 *)dst;
 
-    while (w4--) {
-        /* Pack 2 RGB565 pixels into one U32 (little-endian ARM) */
-        dst32[0] = (U32)palette565[src[0]] | ((U32)palette565[src[1]] << 16);
-        dst32[1] = (U32)palette565[src[2]] | ((U32)palette565[src[3]] << 16);
-        src += 4;
-        dst32 += 2;
-    }
+        while (w4--) {
+            dst32[0] = (U32)palette565[src[0]] | ((U32)palette565[src[1]] << 16);
+            dst32[1] = (U32)palette565[src[2]] | ((U32)palette565[src[3]] << 16);
+            src += 4;
+            dst32 += 2;
+        }
 
-    /* Handle remaining 1-3 pixels */
-    dst = (U16 *)dst32;
-    while (rem--) {
-        *dst++ = palette565[*src++];
+        dst = (U16 *)dst32;
+        while (rem--) {
+            *dst++ = palette565[*src++];
+        }
+    } else {
+        /* Unaligned: safe U16 writes, still unrolled x4 */
+        U16 w4 = width >> 2;
+        U16 rem = width & 3;
+
+        while (w4--) {
+            dst[0] = palette565[src[0]];
+            dst[1] = palette565[src[1]];
+            dst[2] = palette565[src[2]];
+            dst[3] = palette565[src[3]];
+            src += 4;
+            dst += 4;
+        }
+        while (rem--) {
+            *dst++ = palette565[*src++];
+        }
     }
 }
 
