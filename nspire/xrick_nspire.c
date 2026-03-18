@@ -51,7 +51,7 @@ void sys_init(int argc, char **argv)
     if (argc > 0)
         nspire_chdir_to_exe(argv[0]);
 
-    /* Initialize SDL 1.2 (video only, no audio) */
+    /* Initialize SDL 1.2 (video only, no audio/timer - nSDL has no thread support) */
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
         exit(1);
 

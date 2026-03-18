@@ -4,11 +4,6 @@
  * Replaces the original sysvid.c which uses SDL2.
  * Uses SDL 1.2 (nSDL) with a 320x240 16-bit RGB565 surface.
  * The game framebuffer is 320x200 8-bit palettized, centered vertically.
- *
- * Optimizations:
- * - Precomputed RGB565 palette lookup table
- * - Unrolled conversion loop (4 pixels/iteration, U32 writes when aligned)
- * - Alignment-safe: falls back to U16 writes to avoid Data Abort on ARM926EJ-S
  */
 
 #include <stdlib.h>
@@ -128,55 +123,19 @@ void sysvid_shutdown(void)
 }
 
 /*
- * Convert one scanline from 8-bit palettized to RGB565.
- *
- * When dst is 4-byte aligned, uses unrolled U32 writes (2 pixels per write).
- * Otherwise falls back to safe U16 writes to avoid Data Abort on ARM926EJ-S
- * which does not support unaligned 32-bit memory access.
- */
-static void convert_scanline(const U8 *src, U16 *dst, U16 width)
-{
-    U16 w4 = width >> 2;
-    U16 rem = width & 3;
-
-    /* Check if dst is 4-byte aligned for safe U32 writes */
-    if (((U32)dst & 3) == 0) {
-        U32 *dst32 = (U32 *)dst;
-
-        while (w4--) {
-            dst32[0] = (U32)palette565[src[0]] | ((U32)palette565[src[1]] << 16);
-            dst32[1] = (U32)palette565[src[2]] | ((U32)palette565[src[3]] << 16);
-            src += 4;
-            dst32 += 2;
-        }
-
-        dst = (U16 *)dst32;
-    } else {
-        /* Unaligned: safe U16 writes, still unrolled x4 */
-        while (w4--) {
-            dst[0] = palette565[src[0]];
-            dst[1] = palette565[src[1]];
-            dst[2] = palette565[src[2]];
-            dst[3] = palette565[src[3]];
-            src += 4;
-            dst += 4;
-        }
-    }
-
-    while (rem--) {
-        *dst++ = palette565[*src++];
-    }
-}
-
-/*
  * sysvid_update
  *
  * Convert the 8-bit palettized framebuffer to RGB565 and blit to screen.
  * The game FB (320x200) is centered vertically on the Nspire screen (320x240).
+ *
+ * Simple pixel-by-pixel conversion with precomputed palette lookup.
  */
 void sysvid_update(rect_t *rects)
 {
     rect_t *rect;
+    U16 x, y;
+    U8 *src_row;
+    U16 *dst_row;
     U16 pitch16;
 
     if (rects == NULL || screen == NULL)
@@ -185,7 +144,7 @@ void sysvid_update(rect_t *rects)
     if (SDL_MUSTLOCK(screen))
         SDL_LockSurface(screen);
 
-    pitch16 = screen->pitch / 2;
+    pitch16 = screen->pitch / 2;  /* pitch in U16 units */
 
     rect = rects;
     while (rect) {
@@ -193,16 +152,18 @@ void sysvid_update(rect_t *rects)
         U16 ry = rect->y;
         U16 rw = rect->width;
         U16 rh = rect->height;
-        U16 y;
 
         /* Clamp to framebuffer bounds */
         if (rx + rw > fb_width) rw = fb_width - rx;
         if (ry + rh > fb_height) rh = fb_height - ry;
 
         for (y = ry; y < ry + rh; y++) {
-            const U8 *src = ((const U8 *)&fb) + y * fb_width + rx;
-            U16 *dst = (U16 *)screen->pixels + (y + Y_OFFSET) * pitch16 + rx;
-            convert_scanline(src, dst, rw);
+            src_row = ((U8*)&fb) + y * fb_width + rx;
+            dst_row = (U16*)screen->pixels + (y + Y_OFFSET) * pitch16 + rx;
+
+            for (x = 0; x < rw; x++) {
+                dst_row[x] = palette565[src_row[x]];
+            }
         }
 
         rect = rect->next;
