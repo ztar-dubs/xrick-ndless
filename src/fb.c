@@ -21,8 +21,9 @@
 #include <string.h> /* memset */
 
 
-// FIXME
-U8 fb[FB_HEIGHT][FB_WIDTH];
+/* Extra guard rows (FB_GUARD) prevent out-of-bounds sprite writes
+ * from corrupting adjacent globals on ARM/Nspire */
+U8 fb[FB_HEIGHT + FB_GUARD][FB_WIDTH];
 rect_t *urects;
 
 

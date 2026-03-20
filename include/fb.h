@@ -21,8 +21,12 @@
 #define FB_WIDTH 320
 #define FB_HEIGHT 200
 
-// FIXME?
-extern U8 fb[FB_HEIGHT][FB_WIDTH];
+/* Guard rows after framebuffer to prevent corruption from out-of-bounds
+ * sprite writes (e.g. drawsprite in scr_imap.c with U8 y overflow).
+ * On PC this is harmless; on ARM/Nspire it can corrupt adjacent globals. */
+#define FB_GUARD 56
+
+extern U8 fb[FB_HEIGHT + FB_GUARD][FB_WIDTH];
 
 /*
  * returns the fb pointer at <x>, <y>.
