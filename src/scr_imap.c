@@ -87,15 +87,22 @@ U8 screen_introMap(void)
 			tiles_setFilter(0xffff);
 #endif
 
+#ifdef NSPIRE
+			/* Static display: background image + borders, no animation */
+			drawcenter();
+			drawtb();
+			drawlr();
+#else
 			init();
 			nextstep();
 			drawcenter();
 			drawtb();
 			drawlr();
 			drawsprite();
+#endif
 			control_last = 0;
 
-			//game_rects = &draw_SCREENRECT;
+			game_rects = &draw_SCREENRECT;
 
 #ifdef ENABLE_SOUND
 			sounds_setMusic(map_maps[env_map].tune, 1);
@@ -109,7 +116,14 @@ U8 screen_introMap(void)
 				seq = 10;
 			break;
 
-		case 10:  /* top and bottom borders */
+		case 10:
+#ifdef NSPIRE
+			/* Wait for any key to start level */
+			if (control_status)
+				seq = 30;
+			break;
+#else
+			/* top and bottom borders */
 			if (control_status & CONTROL_FIRE)
 			{
 				seq = 20;
@@ -136,6 +150,7 @@ U8 screen_introMap(void)
 			game_rects = &anim_rect;
 			seq = 10;
 			break;
+#endif
 
 		case 20:  /* wait for key release */
 			if (!(control_status & CONTROL_FIRE))
@@ -317,6 +332,5 @@ init(void)
 }
 
 /* eof */
-
 
 

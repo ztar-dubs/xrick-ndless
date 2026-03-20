@@ -229,6 +229,10 @@ static void game_loop(void)
 	// nothing - emscripten should invoke the loop every game_period
 	// and we should not sys_sleep in emscripten apps
 	// (see game_run above)
+#elif defined(NSPIRE)
+	/* On Nspire, SDL_GetTicks doesn't work so we use a fixed delay.
+	 * Target ~30fps: 33ms per frame, minus ~20ms render time. */
+	sys_sleep(13);
 #else
 	// sys_gettime() and sys_sleep() use milliseconds
 	tmx = tm; tm = sys_gettime(); tmx = tm - tmx;
@@ -236,10 +240,14 @@ static void game_loop(void)
 #endif
 
 	/* video */
-	/*DEBUG*//*game_rects=&draw_SCREENRECT;*//*DEBUG*/
-	// FIXME:??
-	//sysvid_update(fb_updatedRects);
+#ifdef NSPIRE
+	/* On Nspire, SDL_GetTicks doesn't work so frame timing depends on
+	 * render time. Force full screen update every frame to keep render
+	 * time constant and game speed stable. */
+	sysvid_update(&draw_SCREENRECT);
+#else
 	sysvid_update(game_rects);
+#endif
 	draw_STATUSRECT.next = NULL;  /* FIXME freerects should handle this */
 
 	/* sound: nothing to do here, everything is managed via callbacks */

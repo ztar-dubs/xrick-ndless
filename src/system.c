@@ -20,6 +20,10 @@
 
 #include "system.h"
 
+#ifdef NSPIRE
+#include <libndls.h>
+#endif
+
 /*
  * Panic
  */
@@ -93,7 +97,12 @@ sys_gettime(void)
 void
 sys_sleep(int s)
 {
+#ifdef NSPIRE
+	if (s > 0)
+		msleep(s);
+#else
 	SDL_Delay(s);
+#endif
 }
 
 /* eof */
