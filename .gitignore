@@ -4,6 +4,5 @@
 *.zehn
 *.map
 
-# Binary (keep prod/xrick.tns for distribution)
-xrick.tns
-!prod/xrick.tns
+# Binaries
+*.tns
