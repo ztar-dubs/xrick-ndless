@@ -564,4 +564,42 @@ void e_rick_restore(void)
 
 
 
+#ifdef NSPIRE
+/*
+ * Save/load accessors for static variables
+ */
+typedef struct {
+	U8 scrawl, trigger, ylow, seq, save_crawl;
+	S8 offsx;
+	S16 offsy;
+	U16 save_x, save_y;
+} e_rick_statics_t;
+
+void e_rick_get_statics(e_rick_statics_t *out)
+{
+	out->scrawl = scrawl;
+	out->trigger = trigger;
+	out->offsx = offsx;
+	out->ylow = ylow;
+	out->offsy = offsy;
+	out->seq = seq;
+	out->save_crawl = save_crawl;
+	out->save_x = save_x;
+	out->save_y = save_y;
+}
+
+void e_rick_set_statics(const e_rick_statics_t *in)
+{
+	scrawl = in->scrawl;
+	trigger = in->trigger;
+	offsx = in->offsx;
+	ylow = in->ylow;
+	offsy = in->offsy;
+	seq = in->seq;
+	save_crawl = in->save_crawl;
+	save_x = in->save_x;
+	save_y = in->save_y;
+}
+#endif
+
 /* eof */

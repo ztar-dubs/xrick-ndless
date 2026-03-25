@@ -87,7 +87,8 @@ NSPIRE_SRC = \
 	$(NSPDIR)/syskbd_nspire.c \
 	$(NSPDIR)/syssnd_nspire.c \
 	$(NSPDIR)/sysarg_nspire.c \
-	$(NSPDIR)/xrick_nspire.c
+	$(NSPDIR)/xrick_nspire.c \
+	$(NSPDIR)/saveload.c
 
 # nspire_fopen.c must be compiled WITHOUT -flto for --wrap to work
 FOPEN_SRC = $(NSPDIR)/nspire_fopen.c

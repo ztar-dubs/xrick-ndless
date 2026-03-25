@@ -54,14 +54,23 @@ TI-Nspire storage/<br>
   <tr><td><strong>2</strong></td><td>Down / Crouch</td></tr>
   <tr><td><strong>4</strong></td><td>Left</td></tr>
   <tr><td><strong>6</strong></td><td>Right</td></tr>
-  <tr><td><strong>Enter / Ctrl / Tab</strong></td><td>Fire / Use weapon</td></tr>
-  <tr><td><strong>P</strong> or <strong>Del</strong></td><td>Pause</td></tr>
+  <tr><td><strong>Enter / Ctrl</strong></td><td>Fire / Use weapon</td></tr>
+  <tr><td><strong>Tab</strong></td><td>Quick save</td></tr>
+  <tr><td><strong>Del</strong></td><td>Quick load</td></tr>
+  <tr><td><strong>P</strong></td><td>Pause</td></tr>
   <tr><td><strong>E</strong></td><td>End game</td></tr>
   <tr><td><strong>Esc</strong></td><td>Quit</td></tr>
 </table>
 
 <p><strong>Tip:</strong> You can press direction keys simultaneously (e.g. <strong>8</strong> + <strong>6</strong>
 to jump right). The numpad keys are used instead of arrow keys to avoid keyboard ghosting on the Nspire.</p>
+
+<h2>Quick save / Quick load</h2>
+
+<p>Press <strong>Tab</strong> at any time during gameplay to save your current position.
+Press <strong>Del</strong> to instantly restore it. The save is stored in a file called
+<code>xrick.sav.tns</code> in the same folder as the game. Only one save slot is available;
+saving again overwrites the previous save.</p>
 
 <h2>Open source</h2>
 
@@ -84,7 +93,7 @@ by MicroProse / Firebird Software in 1989.</p>
   <li><strong>Display:</strong> 320&times;200 game framebuffer centered on the 320&times;240 Nspire screen (16-bit RGB565)</li>
   <li><strong>Audio:</strong> Disabled (Nspire has no accessible audio hardware)</li>
   <li><strong>Toolchain:</strong> Ndless SDK (nspire-gcc, ARM926EJ-S cross-compiler)</li>
-  <li><strong>Binary size:</strong> ~489 KB</li>
+  <li><strong>Binary size:</strong> ~494 KB</li>
   <li><strong>Port source code:</strong> <a href="https://github.com/ztar-dubs/xrick-ndless.git">https://github.com/ztar-dubs/xrick-ndless</a></li>
 </ul>
 

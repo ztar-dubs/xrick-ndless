@@ -56,6 +56,7 @@ screen_gameover(void)
 	case 1:  /* display banner */
 #ifdef GFXST
 		fb_clear();
+		sysvid_setGamma(255);  /* reset gamma after fade-out so text is visible */
 		tm = sys_gettime();
 #endif
 #ifdef GFXPC

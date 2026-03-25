@@ -883,4 +883,21 @@ static void freeData()
 
 
 
+#ifdef NSPIRE
+/*
+ * Save/load accessors for static variables
+ */
+void game_get_save_state(U8 *out_save_map_row, U8 *out_game_state_val)
+{
+	*out_save_map_row = save_map_row;
+	*out_game_state_val = (U8)game_state;
+}
+
+void game_set_save_state(U8 in_save_map_row, U8 in_game_state_val)
+{
+	save_map_row = in_save_map_row;
+	game_state = (game_state_t)in_game_state_val;
+}
+#endif
+
 /* eof */

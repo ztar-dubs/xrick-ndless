@@ -16,6 +16,7 @@
 #include "debug.h"
 #include "control.h"
 #include "draw.h"
+#include "saveload.h"
 
 #define SETBIT(x,b) x |= (b)
 #define CLRBIT(x,b) x &= ~(b)
@@ -89,20 +90,18 @@ void sysevt_poll(void)
         CLRBIT(control_status, CONTROL_RIGHT);
     }
 
-    /* Fire: Enter, Ctrl, or Tab */
+    /* Fire: Enter or Ctrl (Tab = save, Del = load) */
     if (isKeyPressed(KEY_NSPIRE_ENTER) ||
         isKeyPressed(KEY_NSPIRE_RET) ||
-        isKeyPressed(KEY_NSPIRE_CTRL) ||
-        isKeyPressed(KEY_NSPIRE_TAB)) {
+        isKeyPressed(KEY_NSPIRE_CTRL)) {
         SETBIT(control_status, CONTROL_FIRE);
         control_last = CONTROL_FIRE;
     } else {
         CLRBIT(control_status, CONTROL_FIRE);
     }
 
-    /* Pause: P or Del key */
-    if (isKeyPressed(KEY_NSPIRE_P) ||
-        isKeyPressed(KEY_NSPIRE_DEL)) {
+    /* Pause: P */
+    if (isKeyPressed(KEY_NSPIRE_P)) {
         SETBIT(control_status, CONTROL_PAUSE);
         control_last = CONTROL_PAUSE;
     } else {
@@ -121,6 +120,26 @@ void sysevt_poll(void)
     if (isKeyPressed(KEY_NSPIRE_ESC)) {
         SETBIT(control_status, CONTROL_EXIT);
         control_last = CONTROL_EXIT;
+    }
+
+    /* Quick save: Tab */
+    {
+        static U8 tab_prev = 0;
+        U8 tab_now = isKeyPressed(KEY_NSPIRE_TAB);
+        if (tab_now && !tab_prev) {
+            saveload_save();
+        }
+        tab_prev = tab_now;
+    }
+
+    /* Quick load: Del */
+    {
+        static U8 del_prev = 0;
+        U8 del_now = isKeyPressed(KEY_NSPIRE_DEL);
+        if (del_now && !del_prev) {
+            saveload_load();
+        }
+        del_prev = del_now;
     }
 }
 
