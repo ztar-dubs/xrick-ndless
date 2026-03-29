@@ -1,7 +1,8 @@
 /*
  * saveload.c - Quick save/load system for TI-Nspire
  *
- * Saves/loads the complete game state (~1.2 KB) to xrick.sav.tns.
+ * Saves/loads the complete game state to xrick.sav.tns.
+ * Uses sequential binary read/write to avoid struct padding issues on ARM.
  * After loading, the map and entities are re-rendered from the restored state.
  */
 
@@ -26,7 +27,7 @@
 
 /* Save file magic and version */
 #define SAVE_MAGIC  0x58534156  /* "XSAV" */
-#define SAVE_VERSION 1
+#define SAVE_VERSION 2
 
 /* e_rick static variables struct (defined in e_rick.c) */
 typedef struct {
@@ -41,57 +42,12 @@ extern void e_rick_set_statics(const e_rick_statics_t *in);
 extern void game_get_save_state(U8 *out_save_map_row, U8 *out_game_state_val);
 extern void game_set_save_state(U8 in_save_map_row, U8 in_game_state_val);
 
-/* Complete save state structure */
-typedef struct {
-    /* Header */
-    U32 magic;
-    U8 version;
-
-    /* Environment */
-    U8 env_lives;
-    U8 env_bombs;
-    U8 env_bullets;
-    U32 env_score;
-    U16 env_map;
-    U16 env_submap;
-    U8 env_changeSubmap;
-    U8 env_trainer;
-    U8 env_invicible;
-    U8 env_highlight;
-
-    /* Game state */
-    U8 game_dir;
-    U8 game_waitevt;
-    U8 save_map_row;
-    U8 game_state_val;
-
-    /* Rick state */
-    U8 e_rick_state;
-    U8 e_rick_atExit;
-    U16 e_rick_stop_x;
-    U16 e_rick_stop_y;
-    e_rick_statics_t rick_statics;
-
-    /* Entity state */
-    ent_t ent_ents[ENT_ENTSNUM + 1];
-
-    /* Bomb/bullet/bonus state */
-    U8 e_bomb_lethal;
-    U8 e_bomb_ticker;
-    S8 e_bullet_offsx;
-    U8 e_sbonus_counting;
-    U8 e_sbonus_counter;
-    U16 e_sbonus_bonus;
-    U32 e_them_rndseed;
-
-    /* Map state */
-    U8 map_frow;
-    U8 map_tilesBank;
-    U8 map_map[0x2C][0x20];
-    U8 map_eflg[0x100];
-} savestate_t;
-
 #define SAVE_FILENAME "xrick.sav"
+
+/* Helper: write raw bytes to file */
+static void wr(FILE *f, const void *p, size_t n) { fwrite(p, 1, n, f); }
+/* Helper: read raw bytes from file */
+static int rd(FILE *f, void *p, size_t n) { return fread(p, 1, n, f) == n; }
 
 /*
  * Save game state to file
@@ -99,62 +55,100 @@ typedef struct {
 void saveload_save(void)
 {
     FILE *f;
-    savestate_t state;
+    U32 magic = SAVE_MAGIC;
+    U8 ver = SAVE_VERSION;
+    U8 smr, gsv;
+    e_rick_statics_t rs;
 
-    memset(&state, 0, sizeof(state));
+    f = fopen(SAVE_FILENAME, "wb");
+    if (!f) return;
 
     /* Header */
-    state.magic = SAVE_MAGIC;
-    state.version = SAVE_VERSION;
+    wr(f, &magic, 4);
+    wr(f, &ver, 1);
 
     /* Environment */
-    state.env_lives = env_lives;
-    state.env_bombs = env_bombs;
-    state.env_bullets = env_bullets;
-    state.env_score = env_score;
-    state.env_map = env_map;
-    state.env_submap = env_submap;
-    state.env_changeSubmap = env_changeSubmap;
-    state.env_trainer = env_trainer;
-    state.env_invicible = env_invicible;
-    state.env_highlight = env_highlight;
+    wr(f, &env_lives, 1);
+    wr(f, &env_bombs, 1);
+    wr(f, &env_bullets, 1);
+    wr(f, &env_score, 4);
+    wr(f, &env_map, 2);
+    wr(f, &env_submap, 2);
+    wr(f, &env_changeSubmap, 1);
+    wr(f, &env_trainer, 1);
+    wr(f, &env_invicible, 1);
+    wr(f, &env_highlight, 1);
 
     /* Game state */
-    state.game_dir = game_dir;
-    state.game_waitevt = game_waitevt;
-    game_get_save_state(&state.save_map_row, &state.game_state_val);
+    wr(f, &game_dir, 1);
+    game_get_save_state(&smr, &gsv);
+    wr(f, &smr, 1);
 
     /* Rick state */
-    state.e_rick_state = e_rick_state;
-    state.e_rick_atExit = e_rick_atExit;
-    state.e_rick_stop_x = e_rick_stop_x;
-    state.e_rick_stop_y = e_rick_stop_y;
-    e_rick_get_statics(&state.rick_statics);
+    wr(f, &e_rick_state, 1);
+    wr(f, &e_rick_atExit, 1);
+    wr(f, &e_rick_stop_x, 2);
+    wr(f, &e_rick_stop_y, 2);
+    e_rick_get_statics(&rs);
+    wr(f, &rs.scrawl, 1);
+    wr(f, &rs.trigger, 1);
+    wr(f, &rs.ylow, 1);
+    wr(f, &rs.seq, 1);
+    wr(f, &rs.save_crawl, 1);
+    wr(f, &rs.offsx, 1);
+    wr(f, &rs.offsy, 2);
+    wr(f, &rs.save_x, 2);
+    wr(f, &rs.save_y, 2);
 
-    /* Entities */
-    memcpy(state.ent_ents, ent_ents, sizeof(state.ent_ents));
+    /* Entities - write each field individually to avoid padding */
+    {
+        int i;
+        for (i = 0; i <= ENT_ENTSNUM; i++) {
+            wr(f, &ent_ents[i].n, 1);
+            wr(f, &ent_ents[i].x, 2);
+            wr(f, &ent_ents[i].y, 2);
+            wr(f, &ent_ents[i].sprite, 1);
+            wr(f, &ent_ents[i].w, 1);
+            wr(f, &ent_ents[i].h, 1);
+            wr(f, &ent_ents[i].mark, 2);
+            wr(f, &ent_ents[i].flags, 1);
+            wr(f, &ent_ents[i].trig_x, 2);
+            wr(f, &ent_ents[i].trig_y, 2);
+            wr(f, &ent_ents[i].xsave, 2);
+            wr(f, &ent_ents[i].ysave, 2);
+            wr(f, &ent_ents[i].sprbase, 2);
+            wr(f, &ent_ents[i].step_no_i, 2);
+            wr(f, &ent_ents[i].step_no, 2);
+            wr(f, &ent_ents[i].c1, 2);
+            wr(f, &ent_ents[i].c2, 2);
+            wr(f, &ent_ents[i].ylow, 1);
+            wr(f, &ent_ents[i].offsy, 2);
+            wr(f, &ent_ents[i].latency, 1);
+            wr(f, &ent_ents[i].prev_n, 1);
+            wr(f, &ent_ents[i].prev_x, 2);
+            wr(f, &ent_ents[i].prev_y, 2);
+            wr(f, &ent_ents[i].prev_s, 1);
+            wr(f, &ent_ents[i].front, 1);
+            wr(f, &ent_ents[i].trigsnd, 1);
+        }
+    }
 
     /* Bomb/bullet/bonus */
-    state.e_bomb_lethal = e_bomb_lethal;
-    state.e_bomb_ticker = e_bomb_ticker;
-    state.e_bullet_offsx = e_bullet_offsx;
-    state.e_sbonus_counting = e_sbonus_counting;
-    state.e_sbonus_counter = e_sbonus_counter;
-    state.e_sbonus_bonus = e_sbonus_bonus;
-    state.e_them_rndseed = e_them_rndseed;
+    wr(f, &e_bomb_lethal, 1);
+    wr(f, &e_bomb_ticker, 1);
+    wr(f, &e_bullet_offsx, 1);
+    wr(f, &e_sbonus_counting, 1);
+    wr(f, &e_sbonus_counter, 1);
+    wr(f, &e_sbonus_bonus, 2);
+    wr(f, &e_them_rndseed, 4);
 
     /* Map */
-    state.map_frow = map_frow;
-    state.map_tilesBank = map_tilesBank;
-    memcpy(state.map_map, map_map, sizeof(state.map_map));
-    memcpy(state.map_eflg, map_eflg, sizeof(state.map_eflg));
+    wr(f, &map_frow, 1);
+    wr(f, &map_tilesBank, 1);
+    wr(f, map_map, sizeof(map_map));
+    wr(f, map_eflg, sizeof(map_eflg));
 
-    /* Write to file */
-    f = fopen(SAVE_FILENAME, "wb");
-    if (f) {
-        fwrite(&state, sizeof(state), 1, f);
-        fclose(f);
-    }
+    fclose(f);
 }
 
 /*
@@ -163,62 +157,112 @@ void saveload_save(void)
 void saveload_load(void)
 {
     FILE *f;
-    savestate_t state;
+    U32 magic;
+    U8 ver, smr;
+    e_rick_statics_t rs;
+    int ok = 1;
 
     f = fopen(SAVE_FILENAME, "rb");
     if (!f) return;
 
-    if (fread(&state, sizeof(state), 1, f) != 1) {
+    /* Header */
+    ok = ok && rd(f, &magic, 4);
+    ok = ok && rd(f, &ver, 1);
+    if (!ok || magic != SAVE_MAGIC || ver != SAVE_VERSION) {
         fclose(f);
         return;
     }
-    fclose(f);
-
-    /* Validate */
-    if (state.magic != SAVE_MAGIC || state.version != SAVE_VERSION)
-        return;
 
     /* Environment */
-    env_lives = state.env_lives;
-    env_bombs = state.env_bombs;
-    env_bullets = state.env_bullets;
-    env_score = state.env_score;
-    env_map = state.env_map;
-    env_submap = state.env_submap;
-    env_changeSubmap = state.env_changeSubmap;
-    env_trainer = state.env_trainer;
-    env_invicible = state.env_invicible;
-    env_highlight = state.env_highlight;
+    ok = ok && rd(f, &env_lives, 1);
+    ok = ok && rd(f, &env_bombs, 1);
+    ok = ok && rd(f, &env_bullets, 1);
+    ok = ok && rd(f, &env_score, 4);
+    ok = ok && rd(f, &env_map, 2);
+    ok = ok && rd(f, &env_submap, 2);
+    ok = ok && rd(f, &env_changeSubmap, 1);
+    ok = ok && rd(f, &env_trainer, 1);
+    ok = ok && rd(f, &env_invicible, 1);
+    ok = ok && rd(f, &env_highlight, 1);
 
     /* Game state */
-    game_dir = state.game_dir;
-    game_waitevt = FALSE;  /* don't restore wait state */
-    game_set_save_state(state.save_map_row, state.game_state_val);
+    ok = ok && rd(f, &game_dir, 1);
+    ok = ok && rd(f, &smr, 1);
 
     /* Rick state */
-    e_rick_state = state.e_rick_state;
-    e_rick_atExit = state.e_rick_atExit;
-    e_rick_stop_x = state.e_rick_stop_x;
-    e_rick_stop_y = state.e_rick_stop_y;
-    e_rick_set_statics(&state.rick_statics);
+    ok = ok && rd(f, &e_rick_state, 1);
+    ok = ok && rd(f, &e_rick_atExit, 1);
+    ok = ok && rd(f, &e_rick_stop_x, 2);
+    ok = ok && rd(f, &e_rick_stop_y, 2);
+    ok = ok && rd(f, &rs.scrawl, 1);
+    ok = ok && rd(f, &rs.trigger, 1);
+    ok = ok && rd(f, &rs.ylow, 1);
+    ok = ok && rd(f, &rs.seq, 1);
+    ok = ok && rd(f, &rs.save_crawl, 1);
+    ok = ok && rd(f, &rs.offsx, 1);
+    ok = ok && rd(f, &rs.offsy, 2);
+    ok = ok && rd(f, &rs.save_x, 2);
+    ok = ok && rd(f, &rs.save_y, 2);
+
+    if (ok) {
+        e_rick_set_statics(&rs);
+        /* Force CTRL_ACTION state - don't restore game_state to avoid
+         * resuming in the middle of a transition (scroll, fade, etc.) */
+        game_set_save_state(smr, 14); /* 14 = CTRL_ACTION */
+        game_waitevt = FALSE;
+    }
 
     /* Entities */
-    memcpy(ent_ents, state.ent_ents, sizeof(state.ent_ents));
+    {
+        int i;
+        for (i = 0; i <= ENT_ENTSNUM && ok; i++) {
+            ok = ok && rd(f, &ent_ents[i].n, 1);
+            ok = ok && rd(f, &ent_ents[i].x, 2);
+            ok = ok && rd(f, &ent_ents[i].y, 2);
+            ok = ok && rd(f, &ent_ents[i].sprite, 1);
+            ok = ok && rd(f, &ent_ents[i].w, 1);
+            ok = ok && rd(f, &ent_ents[i].h, 1);
+            ok = ok && rd(f, &ent_ents[i].mark, 2);
+            ok = ok && rd(f, &ent_ents[i].flags, 1);
+            ok = ok && rd(f, &ent_ents[i].trig_x, 2);
+            ok = ok && rd(f, &ent_ents[i].trig_y, 2);
+            ok = ok && rd(f, &ent_ents[i].xsave, 2);
+            ok = ok && rd(f, &ent_ents[i].ysave, 2);
+            ok = ok && rd(f, &ent_ents[i].sprbase, 2);
+            ok = ok && rd(f, &ent_ents[i].step_no_i, 2);
+            ok = ok && rd(f, &ent_ents[i].step_no, 2);
+            ok = ok && rd(f, &ent_ents[i].c1, 2);
+            ok = ok && rd(f, &ent_ents[i].c2, 2);
+            ok = ok && rd(f, &ent_ents[i].ylow, 1);
+            ok = ok && rd(f, &ent_ents[i].offsy, 2);
+            ok = ok && rd(f, &ent_ents[i].latency, 1);
+            ok = ok && rd(f, &ent_ents[i].prev_n, 1);
+            ok = ok && rd(f, &ent_ents[i].prev_x, 2);
+            ok = ok && rd(f, &ent_ents[i].prev_y, 2);
+            ok = ok && rd(f, &ent_ents[i].prev_s, 1);
+            ok = ok && rd(f, &ent_ents[i].front, 1);
+            ok = ok && rd(f, &ent_ents[i].trigsnd, 1);
+        }
+    }
 
     /* Bomb/bullet/bonus */
-    e_bomb_lethal = state.e_bomb_lethal;
-    e_bomb_ticker = state.e_bomb_ticker;
-    e_bullet_offsx = state.e_bullet_offsx;
-    e_sbonus_counting = state.e_sbonus_counting;
-    e_sbonus_counter = state.e_sbonus_counter;
-    e_sbonus_bonus = state.e_sbonus_bonus;
-    e_them_rndseed = state.e_them_rndseed;
+    ok = ok && rd(f, &e_bomb_lethal, 1);
+    ok = ok && rd(f, &e_bomb_ticker, 1);
+    ok = ok && rd(f, &e_bullet_offsx, 1);
+    ok = ok && rd(f, &e_sbonus_counting, 1);
+    ok = ok && rd(f, &e_sbonus_counter, 1);
+    ok = ok && rd(f, &e_sbonus_bonus, 2);
+    ok = ok && rd(f, &e_them_rndseed, 4);
 
     /* Map */
-    map_frow = state.map_frow;
-    map_tilesBank = state.map_tilesBank;
-    memcpy(map_map, state.map_map, sizeof(state.map_map));
-    memcpy(map_eflg, state.map_eflg, sizeof(state.map_eflg));
+    ok = ok && rd(f, &map_frow, 1);
+    ok = ok && rd(f, &map_tilesBank, 1);
+    ok = ok && rd(f, map_map, sizeof(map_map));
+    ok = ok && rd(f, map_eflg, sizeof(map_eflg));
+
+    fclose(f);
+
+    if (!ok) return;
 
     /* Re-render the screen from restored state */
     fb_clear();
